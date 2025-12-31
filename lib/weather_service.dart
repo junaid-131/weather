@@ -53,7 +53,6 @@ class WeatherService {
     throw Exception("Failed to load weather data");
   }
 
-  /// Get air quality
   static Future<Map<String, dynamic>> getAirQuality(double lat, double lon) async {
     final url =
         "https://api.openweathermap.org/data/2.5/air_pollution?lat=$lat&lon=$lon&appid=$apiKey";

@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'weather_service.dart';
+import 'weather_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -10,14 +13,42 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController controller = TextEditingController();
-  Map<String, dynamic>? weather;
-  Map<String, dynamic>? air;
-  String city = "";
+
   bool loading = false;
   String? error;
 
-  void search() async {
-    if (controller.text.isEmpty) return;
+
+  Map<String, dynamic>? currentResult;
+
+
+  List<Map<String, dynamic>> history = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadHistory();
+  }
+
+  Future<void> loadHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList("history") ?? [];
+
+    setState(() {
+      history =
+          list.map((e) => Map<String, dynamic>.from(jsonDecode(e))).toList();
+    });
+  }
+
+  Future<void> saveHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setStringList(
+      "history",
+      history.map((e) => jsonEncode(e)).toList(),
+    );
+  }
+
+  Future<void> searchCity(String city) async {
+    if (city.isEmpty) return;
 
     setState(() {
       loading = true;
@@ -25,17 +56,33 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
-      final coordinates =
-      await WeatherService.getCityCoordinates(controller.text);
-      city = controller.text;
-      weather = await WeatherService.getWeather(
-          coordinates["lat"]!, coordinates["lon"]!);
-      air = await WeatherService.getAirQuality(
-          coordinates["lat"]!, coordinates["lon"]!);
+      final coords =
+      await WeatherService.getCityCoordinates(city);
+
+      final weather =
+      await WeatherService.getWeather(coords["lat"]!, coords["lon"]!);
+
+      final air =
+      await WeatherService.getAirQuality(coords["lat"]!, coords["lon"]!);
+
+      final item = {
+        "city": city,
+        "weather": weather,
+        "air": air,
+        "time": DateTime.now().millisecondsSinceEpoch,
+      };
 
       setState(() {
+        currentResult = item;
+
+
+        history.removeWhere((e) => e["city"] == city);
+        history.insert(0, item);
+
         loading = false;
       });
+
+      saveHistory();
     } catch (e) {
       setState(() {
         loading = false;
@@ -44,14 +91,97 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  void deleteHistory(int index) {
+    setState(() {
+      history.removeAt(index);
+    });
+    saveHistory();
+  }
+
+  Widget searchResultCard(Map<String, dynamic> item) {
+    final weather = item["weather"]["current"];
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => WeatherDetailScreen(data: item),
+          ),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF2B25A1), Color(0xFF3C2F9C)],
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item["city"],
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "${weather["main"]["temp"].round()}°C",
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 52,
+                  fontWeight: FontWeight.bold),
+            ),
+            Text(
+              weather["weather"][0]["description"],
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                infoBox("Humidity", "${weather["main"]["humidity"]}%"),
+                infoBox("Wind", "${weather["wind"]["speed"]} m/s"),
+                infoBox(
+                  "AQI",
+                  item["air"]["list"][0]["main"]["aqi"].toString(),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget infoBox(String title, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        const SizedBox(height: 4),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1C1B33),
       appBar: AppBar(
+        title: const Text("Search Weather",
+            style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text("Search Weather", style: TextStyle(color: Colors.white)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -59,67 +189,100 @@ class _SearchScreenState extends State<SearchScreen> {
           children: [
             TextField(
               controller: controller,
-              onSubmitted: (_) => search(),
+              onSubmitted: searchCity,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: "Enter city name",
                 hintStyle: const TextStyle(color: Colors.white70),
+                prefixIcon:
+                const Icon(Icons.search, color: Colors.white70),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
-                prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                fillColor: Colors.white12,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+
+            const SizedBox(height: 16),
+
             if (loading) const CircularProgressIndicator(),
+
             if (error != null)
               Text(error!,
-                  style: const TextStyle(color: Colors.redAccent, fontSize: 16)),
-            if (weather != null && air != null)
-              Expanded(
-                child: ListView(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF2B25A1), Color(0xFF3C2F9C)],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(city,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 28)),
-                          const SizedBox(height: 8),
-                          Text(
-                              "${weather!["current"]["main"]["temp"].round()}°",
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.bold)),
-                          Text(
-                              "H:${weather!["daily"][0]["main"]["temp_max"].round()}°  L:${weather!["daily"][0]["main"]["temp_min"].round()}°",
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 16)),
-                          Text(weather!["current"]["weather"][0]["main"],
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 18)),
-                          const SizedBox(height: 12),
-                          Text(
-                              "AQI: ${air!["list"][0]["main"]["aqi"]}",
-                              style: const TextStyle(color: Colors.white70)),
-                        ],
-                      ),
-                    ),
-                  ],
+                  style: const TextStyle(color: Colors.redAccent)),
+
+            if (currentResult != null) ...[
+              const SizedBox(height: 20),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "Search Result",
+                  style: TextStyle(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
+              const SizedBox(height: 10),
+              searchResultCard(currentResult!),
+            ],
+
+            const SizedBox(height: 20),
+
+
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "Search History",
+                style: TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            Expanded(
+              child: ListView.builder(
+                itemCount: history.length,
+                itemBuilder: (context, index) {
+                  final item = history[index];
+                  return Dismissible(
+                    key: Key(item["city"]),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      color: Colors.red,
+                      child:
+                      const Icon(Icons.delete, color: Colors.white),
+                    ),
+                    onDismissed: (_) => deleteHistory(index),
+                    child: ListTile(
+                      leading: const Icon(Icons.history,
+                          color: Colors.white70),
+                      title: Text(item["city"],
+                          style:
+                          const TextStyle(color: Colors.white)),
+                      subtitle: Text(
+                        "${item["weather"]["current"]["main"]["temp"].round()}°C",
+                        style:
+                        const TextStyle(color: Colors.white70),
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                WeatherDetailScreen(data: item),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),

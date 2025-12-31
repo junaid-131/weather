@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_weather_app/weather_service.dart';
-
+import 'weather_service.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -11,12 +10,38 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController controller = TextEditingController();
-  Map<String, dynamic>? data;
+  Map<String, dynamic>? weather;
+  Map<String, dynamic>? air;
+  String city = "";
+  bool loading = false;
+  String? error;
 
   void search() async {
-    final result =
-    await WeatherService.getByCity(controller.text);
-    setState(() => data = result);
+    if (controller.text.isEmpty) return;
+
+    setState(() {
+      loading = true;
+      error = null;
+    });
+
+    try {
+      final coordinates =
+      await WeatherService.getCityCoordinates(controller.text);
+      city = controller.text;
+      weather = await WeatherService.getWeather(
+          coordinates["lat"]!, coordinates["lon"]!);
+      air = await WeatherService.getAirQuality(
+          coordinates["lat"]!, coordinates["lon"]!);
+
+      setState(() {
+        loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        loading = false;
+        error = "Failed to load data";
+      });
+    }
   }
 
   @override
@@ -24,11 +49,9 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF1C1B33),
       appBar: AppBar(
-        iconTheme: const IconThemeData(color: Colors.white),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text("Weather",
-            style: TextStyle(color: Colors.white)),
+        title: const Text("Search Weather", style: TextStyle(color: Colors.white)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -39,13 +62,11 @@ class _SearchScreenState extends State<SearchScreen> {
               onSubmitted: (_) => search(),
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: "Search for a city",
-                hintStyle:
-                const TextStyle(color: Colors.white70),
+                hintText: "Enter city name",
+                hintStyle: const TextStyle(color: Colors.white70),
                 filled: true,
                 fillColor: Colors.white.withOpacity(0.1),
-                prefixIcon:
-                const Icon(Icons.search, color: Colors.white70),
+                prefixIcon: const Icon(Icons.search, color: Colors.white70),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide.none,
@@ -53,42 +74,49 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            if (data != null)
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2B25A1), Color(0xFF3C2F9C)],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
+            if (loading) const CircularProgressIndicator(),
+            if (error != null)
+              Text(error!,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 16)),
+            if (weather != null && air != null)
+              Expanded(
+                child: ListView(
                   children: [
-                    Expanded(
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2B25A1), Color(0xFF3C2F9C)],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                       child: Column(
-                        crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("${data!["main"]["temp"].round()}°",
+                          Text(city,
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 28)),
+                          const SizedBox(height: 8),
+                          Text(
+                              "${weather!["current"]["main"]["temp"].round()}°",
                               style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 36,
+                                  fontSize: 48,
                                   fontWeight: FontWeight.bold)),
                           Text(
-                              "H:${data!["main"]["temp_max"].round()}°  L:${data!["main"]["temp_min"].round()}°",
+                              "H:${weather!["daily"][0]["main"]["temp_max"].round()}°  L:${weather!["daily"][0]["main"]["temp_min"].round()}°",
                               style: const TextStyle(
-                                  color: Colors.white70)),
-                          Text(data!["name"],
+                                  color: Colors.white70, fontSize: 16)),
+                          Text(weather!["current"]["weather"][0]["main"],
                               style: const TextStyle(
-                                  color: Colors.white)),
-                          Text(data!["weather"][0]["main"],
-                              style: const TextStyle(
-                                  color: Colors.white70)),
+                                  color: Colors.white70, fontSize: 18)),
+                          const SizedBox(height: 12),
+                          Text(
+                              "AQI: ${air!["list"][0]["main"]["aqi"]}",
+                              style: const TextStyle(color: Colors.white70)),
                         ],
                       ),
                     ),
-                    const Icon(Icons.cloud,
-                        color: Colors.white, size: 50),
                   ],
                 ),
               ),

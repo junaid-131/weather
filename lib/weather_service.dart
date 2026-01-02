@@ -43,7 +43,7 @@ class WeatherService {
       final currentData = jsonDecode(currentResp.body);
       final forecastData = jsonDecode(forecastResp.body);
 
-      // Merge current + forecast
+
       return {
         "current": currentData,
         "hourly": forecastData["list"], // 3h interval forecast

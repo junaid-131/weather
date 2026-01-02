@@ -19,8 +19,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? error;
 
   Map<String, dynamic>? currentLocationCity;
-  List<Map<String, dynamic>> cities = []; // stores current + added cities
-  int selectedIndex = 0; // for top PageView
+  List<Map<String, dynamic>> cities = [];
+  int selectedIndex = 0;
 
   @override
   void initState() {
@@ -111,10 +111,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final hourly = cities[selectedIndex]["weather"]["hourly"];
     final daily = cities[selectedIndex]["weather"]["daily"];
     final air = cities[selectedIndex]["air"];
-    final cityName = cities[selectedIndex]["city"];
+   // final cityName = cities[selectedIndex]["city"];
 
-    final temp = current["main"]["temp"].round();
-    final condition = current["weather"][0]["main"];
+    //final temp = current["main"]["temp"].round();
+   // final condition = current["weather"][0]["main"];
     final wind = current["wind"]["speed"];
     final rain = current["rain"]?["1h"] ?? 0;
     final sunrise = DateFormat.jm().format(
@@ -145,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          // Top PageView for cities
+
           SizedBox(
             height: 250,
             child: PageView.builder(
@@ -233,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Top city card (simple, centered)
+
   Widget topCard(String city, dynamic weather) {
     return Center(
       child: Column(

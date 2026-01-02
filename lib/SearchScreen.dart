@@ -90,6 +90,12 @@ class _SearchScreenState extends State<SearchScreen> {
       });
     }
   }
+  void clearCityHistory(String city) {
+    setState(() {
+      history.removeWhere((e) => e["city"] == city);
+    });
+    saveHistory();
+  }
 
   void deleteHistory(int index) {
     setState(() {
@@ -259,26 +265,42 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     onDismissed: (_) => deleteHistory(index),
                     child: ListTile(
-                      leading: const Icon(Icons.history,
-                          color: Colors.white70),
-                      title: Text(item["city"],
-                          style:
-                          const TextStyle(color: Colors.white)),
+                      leading: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.history, color: Colors.white70),
+                          const SizedBox(width: 6),
+
+                        ],
+                      ),
+
+                      title: Text(
+                        item["city"],
+                        style: const TextStyle(color: Colors.white),
+                      ),
+
                       subtitle: Text(
                         "${item["weather"]["current"]["main"]["temp"].round()}°C",
-                        style:
-                        const TextStyle(color: Colors.white70),
+                        style: const TextStyle(color: Colors.white70),
                       ),
+
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          clearCityHistory(item["city"]);
+                        },
+                      ),
+
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) =>
-                                WeatherDetailScreen(data: item),
+                            builder: (_) => WeatherDetailScreen(data: item),
                           ),
                         );
                       },
                     ),
+
                   );
                 },
               ),

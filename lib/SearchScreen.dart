@@ -5,7 +5,9 @@ import 'weather_service.dart';
 import 'weather_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  final List<Map<String, dynamic>>? existingCities;
+
+  const SearchScreen({super.key, this.existingCities});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -13,12 +15,9 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController controller = TextEditingController();
-
   bool loading = false;
   String? error;
-
   Map<String, dynamic>? currentResult;
-
   List<Map<String, dynamic>> history = [];
 
   @override
@@ -42,7 +41,6 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> searchCity(String city) async {
     if (city.isEmpty) return;
-
     setState(() {
       loading = true;
       error = null;
@@ -73,8 +71,10 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void addToHistory(Map<String, dynamic> item) {
-    history.removeWhere((e) => e["city"] == item["city"]);
-    history.insert(0, item);
+    setState(() {
+      history.removeWhere((e) => e["city"] == item["city"]);
+      history.insert(0, item);
+    });
     saveHistory();
   }
 
@@ -85,94 +85,12 @@ class _SearchScreenState extends State<SearchScreen> {
     saveHistory();
   }
 
-  void deleteHistory(int index) {
-    setState(() {
-      history.removeAt(index);
-    });
-    saveHistory();
-  }
-
-  Widget searchResultCard(Map<String, dynamic> item) {
-    final weather = item["weather"]["current"];
-
-    return GestureDetector(
-      onTap: () async {
-        // Open detail screen
-        final addedCity = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => WeatherDetailScreen(
-              data: item,
-              alreadyAdded: false,
-            ),
-          ),
-        );
-
-        if (addedCity != null) {
-          addToHistory(addedCity);
-        }
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF2B25A1), Color(0xFF3C2F9C)],
-          ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              item["city"],
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              "${weather["main"]["temp"].round()}°C",
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 52, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              weather["weather"][0]["description"],
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                infoBox("Humidity", "${weather["main"]["humidity"]}%"),
-                infoBox("Wind", "${weather["wind"]["speed"]} m/s"),
-                infoBox("AQI", item["air"]["list"][0]["main"]["aqi"].toString()),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget infoBox(String title, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1C1B33),
       appBar: AppBar(
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text("Search Weather", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -199,9 +117,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             const SizedBox(height: 16),
             if (loading) const CircularProgressIndicator(),
-            if (error != null)
-              Text(error!, style: const TextStyle(color: Colors.redAccent)),
-
+            if (error != null) Text(error!, style: const TextStyle(color: Colors.redAccent)),
             if (currentResult != null) ...[
               const SizedBox(height: 20),
               const Align(
@@ -214,7 +130,6 @@ class _SearchScreenState extends State<SearchScreen> {
               const SizedBox(height: 10),
               searchResultCard(currentResult!),
             ],
-
             const SizedBox(height: 20),
             const Align(
               alignment: Alignment.centerLeft,
@@ -224,52 +139,75 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
             const SizedBox(height: 8),
-
             Expanded(
               child: ListView.builder(
                 itemCount: history.length,
                 itemBuilder: (context, index) {
                   final item = history[index];
-                  return Dismissible(
-                    key: Key(item["city"]),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 20),
-                      color: Colors.red,
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    onDismissed: (_) => deleteHistory(index),
-                    child: ListTile(
-                      leading: const Icon(Icons.history, color: Colors.white70),
-                      title: Text(item["city"], style: const TextStyle(color: Colors.white)),
-                      subtitle: Text(
+                  return ListTile(
+                    leading: const Icon(Icons.history, color: Colors.white70),
+                    title: Text(item["city"], style: const TextStyle(color: Colors.white)),
+                    subtitle: Text(
                         "${item["weather"]["current"]["main"]["temp"].round()}°C",
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => clearCityHistory(item["city"]),
-                      ),
-                      onTap: () async {
-                        final addedCity = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => WeatherDetailScreen(
-                              data: item,
-                              alreadyAdded: false,
-                            ),
-                          ),
-                        );
-                        if (addedCity != null) {
-                          addToHistory(addedCity);
-                        }
-                      },
+                        style: const TextStyle(color: Colors.white70)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.redAccent),
+                      onPressed: () => clearCityHistory(item["city"]),
                     ),
+                    onTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => WeatherDetailScreen(
+                            data: item,
+                            alreadyAdded: widget.existingCities?.any((c) => c["city"] == item["city"]) ?? false,
+                          ),
+                        ),
+                      );
+                      if (result != null) Navigator.pop(context, result);
+                    },
                   );
                 },
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget searchResultCard(Map<String, dynamic> item) {
+    final weather = item["weather"]["current"];
+    return GestureDetector(
+      onTap: () async {
+        addToHistory(item);
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => WeatherDetailScreen(
+              data: item,
+              alreadyAdded: widget.existingCities?.any((c) => c["city"] == item["city"]) ?? false,
+            ),
+          ),
+        );
+        if (result != null) Navigator.pop(context, result);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [Color(0xFF2B25A1), Color(0xFF3C2F9C)]),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(item["city"],
+                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Text("${weather["main"]["temp"].round()}°C",
+                style: const TextStyle(color: Colors.white, fontSize: 52, fontWeight: FontWeight.bold)),
+            Text(weather["weather"][0]["description"], style: const TextStyle(color: Colors.white70, fontSize: 16)),
           ],
         ),
       ),

@@ -25,15 +25,11 @@ class WeatherDetailScreen extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: Icon(
-              Icons.add,
-              color: alreadyAdded ? Colors.white38 : Colors.white,
-            ),
+            icon: Icon(Icons.add, color: alreadyAdded ? Colors.white38 : Colors.white),
             onPressed: alreadyAdded
                 ? null
                 : () {
-              // Return this city to previous screen
-              Navigator.pop(context, data);
+              Navigator.pop(context, data); // Return city to HomeScreen
             },
           )
         ],
@@ -43,19 +39,12 @@ class WeatherDetailScreen extends StatelessWidget {
         child: ListView(
           children: [
             Center(
-              child: Text(
-                "${weather["main"]["temp"].round()}°C",
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 60,
-                    fontWeight: FontWeight.bold),
-              ),
+              child: Text("${weather["main"]["temp"].round()}°C",
+                  style: const TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.bold)),
             ),
             Center(
-              child: Text(
-                weather["weather"][0]["description"],
-                style: const TextStyle(color: Colors.white70, fontSize: 18),
-              ),
+              child: Text(weather["weather"][0]["description"],
+                  style: const TextStyle(color: Colors.white70, fontSize: 18)),
             ),
             const SizedBox(height: 30),
             detail("Humidity", "${weather["main"]["humidity"]}%"),
@@ -75,9 +64,7 @@ class WeatherDetailScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(title, style: const TextStyle(color: Colors.white70)),
-          Text(value,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold)),
+          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         ],
       ),
     );

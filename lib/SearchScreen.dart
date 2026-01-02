@@ -17,9 +17,7 @@ class _SearchScreenState extends State<SearchScreen> {
   bool loading = false;
   String? error;
 
-
   Map<String, dynamic>? currentResult;
-
 
   List<Map<String, dynamic>> history = [];
 
@@ -32,19 +30,14 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> loadHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList("history") ?? [];
-
     setState(() {
-      history =
-          list.map((e) => Map<String, dynamic>.from(jsonDecode(e))).toList();
+      history = list.map((e) => Map<String, dynamic>.from(jsonDecode(e))).toList();
     });
   }
 
   Future<void> saveHistory() async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.setStringList(
-      "history",
-      history.map((e) => jsonEncode(e)).toList(),
-    );
+    prefs.setStringList("history", history.map((e) => jsonEncode(e)).toList());
   }
 
   Future<void> searchCity(String city) async {
@@ -56,14 +49,9 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
-      final coords =
-      await WeatherService.getCityCoordinates(city);
-
-      final weather =
-      await WeatherService.getWeather(coords["lat"]!, coords["lon"]!);
-
-      final air =
-      await WeatherService.getAirQuality(coords["lat"]!, coords["lon"]!);
+      final coords = await WeatherService.getCityCoordinates(city);
+      final weather = await WeatherService.getWeather(coords["lat"]!, coords["lon"]!);
+      final air = await WeatherService.getAirQuality(coords["lat"]!, coords["lon"]!);
 
       final item = {
         "city": city,
@@ -74,15 +62,8 @@ class _SearchScreenState extends State<SearchScreen> {
 
       setState(() {
         currentResult = item;
-
-
-        history.removeWhere((e) => e["city"] == city);
-        history.insert(0, item);
-
         loading = false;
       });
-
-      saveHistory();
     } catch (e) {
       setState(() {
         loading = false;
@@ -90,6 +71,13 @@ class _SearchScreenState extends State<SearchScreen> {
       });
     }
   }
+
+  void addToHistory(Map<String, dynamic> item) {
+    history.removeWhere((e) => e["city"] == item["city"]);
+    history.insert(0, item);
+    saveHistory();
+  }
+
   void clearCityHistory(String city) {
     setState(() {
       history.removeWhere((e) => e["city"] == city);
@@ -108,13 +96,21 @@ class _SearchScreenState extends State<SearchScreen> {
     final weather = item["weather"]["current"];
 
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        // Open detail screen
+        final addedCity = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => WeatherDetailScreen(data: item),
+            builder: (_) => WeatherDetailScreen(
+              data: item,
+              alreadyAdded: false,
+            ),
           ),
         );
+
+        if (addedCity != null) {
+          addToHistory(addedCity);
+        }
       },
       child: Container(
         width: double.infinity,
@@ -131,17 +127,13 @@ class _SearchScreenState extends State<SearchScreen> {
             Text(
               item["city"],
               style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold),
+                  color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             Text(
               "${weather["main"]["temp"].round()}°C",
               style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 52,
-                  fontWeight: FontWeight.bold),
+                  color: Colors.white, fontSize: 52, fontWeight: FontWeight.bold),
             ),
             Text(
               weather["weather"][0]["description"],
@@ -153,10 +145,7 @@ class _SearchScreenState extends State<SearchScreen> {
               children: [
                 infoBox("Humidity", "${weather["main"]["humidity"]}%"),
                 infoBox("Wind", "${weather["wind"]["speed"]} m/s"),
-                infoBox(
-                  "AQI",
-                  item["air"]["list"][0]["main"]["aqi"].toString(),
-                ),
+                infoBox("AQI", item["air"]["list"][0]["main"]["aqi"].toString()),
               ],
             ),
           ],
@@ -169,12 +158,12 @@ class _SearchScreenState extends State<SearchScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        Text(title, style: const TextStyle(color: Colors.white70, fontSize: 13)),
         const SizedBox(height: 4),
-        Text(value,
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ],
     );
   }
@@ -184,8 +173,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF1C1B33),
       appBar: AppBar(
-        title: const Text("Search Weather",
-            style: TextStyle(color: Colors.white)),
+        title: const Text("Search Weather", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -200,8 +188,7 @@ class _SearchScreenState extends State<SearchScreen> {
               decoration: InputDecoration(
                 hintText: "Enter city name",
                 hintStyle: const TextStyle(color: Colors.white70),
-                prefixIcon:
-                const Icon(Icons.search, color: Colors.white70),
+                prefixIcon: const Icon(Icons.search, color: Colors.white70),
                 filled: true,
                 fillColor: Colors.white12,
                 border: OutlineInputBorder(
@@ -210,14 +197,10 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             if (loading) const CircularProgressIndicator(),
-
             if (error != null)
-              Text(error!,
-                  style: const TextStyle(color: Colors.redAccent)),
+              Text(error!, style: const TextStyle(color: Colors.redAccent)),
 
             if (currentResult != null) ...[
               const SizedBox(height: 20),
@@ -225,9 +208,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   "Search Result",
-                  style: TextStyle(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(height: 10),
@@ -235,15 +216,11 @@ class _SearchScreenState extends State<SearchScreen> {
             ],
 
             const SizedBox(height: 20),
-
-
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 "Search History",
-                style: TextStyle(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.bold),
+                style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 8),
@@ -260,47 +237,35 @@ class _SearchScreenState extends State<SearchScreen> {
                       alignment: Alignment.centerRight,
                       padding: const EdgeInsets.only(right: 20),
                       color: Colors.red,
-                      child:
-                      const Icon(Icons.delete, color: Colors.white),
+                      child: const Icon(Icons.delete, color: Colors.white),
                     ),
                     onDismissed: (_) => deleteHistory(index),
                     child: ListTile(
-                      leading: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.history, color: Colors.white70),
-                          const SizedBox(width: 6),
-
-                        ],
-                      ),
-
-                      title: Text(
-                        item["city"],
-                        style: const TextStyle(color: Colors.white),
-                      ),
-
+                      leading: const Icon(Icons.history, color: Colors.white70),
+                      title: Text(item["city"], style: const TextStyle(color: Colors.white)),
                       subtitle: Text(
                         "${item["weather"]["current"]["main"]["temp"].round()}°C",
                         style: const TextStyle(color: Colors.white70),
                       ),
-
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          clearCityHistory(item["city"]);
-                        },
+                        onPressed: () => clearCityHistory(item["city"]),
                       ),
-
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        final addedCity = await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => WeatherDetailScreen(data: item),
+                            builder: (_) => WeatherDetailScreen(
+                              data: item,
+                              alreadyAdded: false,
+                            ),
                           ),
                         );
+                        if (addedCity != null) {
+                          addToHistory(addedCity);
+                        }
                       },
                     ),
-
                   );
                 },
               ),

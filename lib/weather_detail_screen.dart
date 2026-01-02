@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 
 class WeatherDetailScreen extends StatelessWidget {
   final Map<String, dynamic> data;
+  final bool alreadyAdded;
 
-  const WeatherDetailScreen({super.key, required this.data});
+  const WeatherDetailScreen({
+    super.key,
+    required this.data,
+    required this.alreadyAdded,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +23,20 @@ class WeatherDetailScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.add,
+              color: alreadyAdded ? Colors.white38 : Colors.white,
+            ),
+            onPressed: alreadyAdded
+                ? null
+                : () {
+              // Return this city to previous screen
+              Navigator.pop(context, data);
+            },
+          )
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -35,8 +54,7 @@ class WeatherDetailScreen extends StatelessWidget {
             Center(
               child: Text(
                 weather["weather"][0]["description"],
-                style:
-                const TextStyle(color: Colors.white70, fontSize: 18),
+                style: const TextStyle(color: Colors.white70, fontSize: 18),
               ),
             ),
             const SizedBox(height: 30),
